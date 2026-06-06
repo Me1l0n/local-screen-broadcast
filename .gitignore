@@ -1,5 +1,8 @@
 # Dependencies
 node_modules/
+
+# Personal tournament guide (local use only)
+tournament_guide.md
 npm-debug.log*
 yarn-error.log*
 
