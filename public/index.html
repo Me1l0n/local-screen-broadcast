@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tournament Stream — Панель наблюдения</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:          #080a10;
+      --surface:     #0f1118;
+      --surface2:    #171b27;
+      --surface3:    #1e2333;
+      --accent:      #7c3aed;
+      --accent2:     #4f46e5;
+      --neon:        #a78bfa;
+      --neon2:       #818cf8;
+      --text:        #e2e8f0;
+      --text-muted:  #64748b;
+      --text-dim:    #94a3b8;
+      --success:     #10b981;
+      --danger:      #ef4444;
+      --warn:        #f59e0b;
+      --border:      rgba(124,58,237,.18);
+      --glow:        0 0 30px rgba(124,58,237,.25);
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Background noise ────────────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(124,58,237,.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 90% 110%, rgba(79,70,229,.1) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(15,17,24,.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: .9rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+    }
+
+    .logo-icon {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.15rem;
+      box-shadow: 0 4px 12px rgba(124,58,237,.4);
+      flex-shrink: 0;
+    }
+
+    .logo-text {
+      font-size: 1.15rem; font-weight: 700;
+      background: linear-gradient(135deg, #a78bfa, #60a5fa);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .logo-sub { font-size: .7rem; color: var(--text-muted); font-weight: 400; letter-spacing: .04em; }
+
+    .header-right {
+      display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+    }
+
+    .badge {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .35rem .85rem;
+      font-size: .78rem;
+      color: var(--text-muted);
+      display: flex; align-items: center; gap: .4rem;
+    }
+    .badge .val { color: var(--neon); font-weight: 700; }
+
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: background .4s;
+    }
+    .status-dot.live { background: var(--success); animation: blink 2s infinite; }
+    @keyframes blink {
+      0%,100% { box-shadow: 0 0 0 0 rgba(16,185,129,.5); }
+      50%      { box-shadow: 0 0 0 5px rgba(16,185,129,0); }
+    }
+
+    /* ── Main ───────────────────────────────────────────────────────── */
+    main {
+      position: relative; z-index: 1;
+      padding: 1.75rem;
+      max-width: 1700px;
+      margin: 0 auto;
+    }
+
+    /* ── Info bar ────────────────────────────────────────────────────── */
+    .info-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+      flex-wrap: wrap;
+    }
+
+    .info-label {
+      font-size: .78rem; color: var(--text-muted); text-transform: uppercase;
+      letter-spacing: .07em; margin-bottom: .25rem;
+    }
+
+    .stream-url-wrap {
+      display: flex; align-items: center; gap: .5rem; flex: 1; min-width: 0;
+    }
+
+    .stream-url {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .45rem .85rem;
+      font-family: monospace;
+      font-size: .8rem;
+      color: var(--neon);
+      flex: 1;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    .btn {
+      border: none; cursor: pointer;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      border-radius: 8px;
+      transition: all .2s ease;
+      display: flex; align-items: center; gap: .4rem;
+    }
+    .btn:active { transform: scale(.97); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      padding: .45rem 1rem;
+      font-size: .8rem;
+      box-shadow: 0 3px 10px rgba(124,58,237,.35);
+    }
+    .btn-primary:hover { opacity: .88; }
+    .btn-primary.copied {
+      background: linear-gradient(135deg, var(--success), #059669);
+    }
+
+    .btn-icon {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      padding: .45rem .7rem;
+      font-size: .85rem;
+    }
+    .btn-icon:hover { background: var(--surface3); color: var(--text); }
+
+    /* QR popup */
+    .qr-wrap {
+      position: relative;
+    }
+    .qr-popup {
+      display: none;
+      position: absolute;
+      right: 0; top: calc(100% + 8px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem;
+      z-index: 200;
+      box-shadow: var(--glow), 0 10px 40px #000;
+      text-align: center;
+      min-width: 180px;
+    }
+    .qr-popup.show { display: block; animation: fadeUp .2s ease; }
+    @keyframes fadeUp { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: none; } }
+    .qr-popup canvas { display: block; margin: 0 auto .5rem; border-radius: 8px; }
+    .qr-popup p { font-size: .72rem; color: var(--text-muted); }
+
+    /* ── Empty state ─────────────────────────────────────────────────── */
+    .empty-state {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 52vh;
+      gap: .85rem; text-align: center;
+    }
+
+    .empty-icon {
+      font-size: 4rem; opacity: .2;
+      animation: float 4s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(-10px); }
+    }
+
+    .empty-title { font-size: 1.35rem; font-weight: 700; color: var(--text-dim); }
+    .empty-sub   { font-size: .9rem; color: var(--text-muted); max-width: 400px; line-height: 1.6; }
+
+    /* ── Players grid ────────────────────────────────────────────────── */
+    .players-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
+      gap: 1.5rem;
+    }
+
+    /* ── Player card ─────────────────────────────────────────────────── */
+    .player-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+      transition: border-color .3s, box-shadow .3s, transform .3s;
+      animation: cardIn .35s ease;
+    }
+    @keyframes cardIn {
+      from { opacity:0; transform: scale(.96) translateY(8px); }
+      to   { opacity:1; transform: none; }
+    }
+    .player-card:hover {
+      border-color: var(--accent);
+      box-shadow: var(--glow);
+      transform: translateY(-3px);
+    }
+    .player-card.leaving {
+      border-color: var(--danger);
+      opacity: .45;
+      transform: scale(.97);
+      transition: all .6s ease;
+    }
+
+    .card-header {
+      padding: .7rem 1.1rem;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .player-label {
+      display: flex; align-items: center; gap: .55rem;
+      font-weight: 700; font-size: .9rem;
+    }
+
+    .live-pill {
+      display: flex; align-items: center; gap: .35rem;
+      font-size: .65rem; font-weight: 700;
+      color: var(--success);
+      background: rgba(16,185,129,.12);
+      border: 1px solid rgba(16,185,129,.3);
+      border-radius: 20px;
+      padding: .2rem .6rem;
+      letter-spacing: .05em;
+    }
+    .live-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--success);
+      animation: blink 2s infinite;
+    }
+
+    /* ── Video ───────────────────────────────────────────────────────── */
+    .video-wrap {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      overflow: hidden;
+    }
+
+    .player-video {
+      width: 100%; height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .video-placeholder {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: .5rem;
+      color: var(--text-muted);
+      font-size: .85rem;
+    }
+    .video-placeholder .spin { font-size: 1.5rem; animation: spin 1.5s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Card footer ─────────────────────────────────────────────────── */
+    .card-footer {
+      padding: .65rem 1rem;
+      display: flex; gap: .5rem; align-items: center;
+    }
+
+    .obs-url-display {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: .4rem .75rem;
+      font-family: monospace;
+      font-size: .72rem;
+      color: var(--text-muted);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      cursor: default;
+      user-select: all;
+    }
+
+    .copy-obs-btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      border: none; cursor: pointer;
+      font-family: 'Outfit', sans-serif;
+      font-size: .75rem; font-weight: 700;
+      border-radius: 7px;
+      padding: .4rem .9rem;
+      white-space: nowrap;
+      transition: all .2s;
+      display: flex; align-items: center; gap: .3rem;
+      box-shadow: 0 2px 8px rgba(124,58,237,.35);
+    }
+    .copy-obs-btn:hover { opacity: .88; transform: scale(1.03); }
+    .copy-obs-btn:active { transform: scale(.96); }
+    .copy-obs-btn.copied { background: linear-gradient(135deg,var(--success),#059669); }
+
+    .open-obs-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      padding: .4rem .65rem;
+      font-size: .85rem; border-radius: 7px; cursor: pointer;
+      transition: all .2s;
+    }
+    .open-obs-btn:hover { background: var(--surface3); color: var(--text); }
+
+    /* ── Toast ───────────────────────────────────────────────────────── */
+    .toast {
+      position: fixed; bottom: 1.75rem; right: 1.75rem; z-index: 999;
+      background: var(--surface);
+      border: 1px solid var(--success);
+      color: var(--success);
+      padding: .65rem 1.2rem;
+      border-radius: 10px;
+      font-size: .84rem; font-weight: 600;
+      opacity: 0; transform: translateY(8px);
+      transition: all .3s ease;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: none; }
+
+    /* ── Responsive ──────────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      header { padding: .75rem 1rem; }
+      main { padding: 1rem; }
+      .players-grid { grid-template-columns: 1fr; }
+      .info-bar { flex-direction: column; align-items: flex-start; }
+    }
+
+    /* ── Fullscreen button ─────────────────────────────────────── */
+    .fs-btn {
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      border-radius: 7px;
+      padding: .25rem .45rem;
+      font-size: .95rem;
+      cursor: pointer;
+      line-height: 1;
+      transition: all .2s;
+    }
+    .fs-btn:hover {
+      background: var(--accent);
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 2px 8px rgba(124,58,237,.4);
+    }
+
+    /* ── Fullscreen overlay ─────────────────────────────────── */
+    .fs-overlay {
+      display: none;
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 3rem 1.5rem .9rem;
+      background: linear-gradient(to top, rgba(0,0,0,.8) 0%, transparent 100%);
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem; font-weight: 800;
+      color: #fff;
+      pointer-events: none;
+      letter-spacing: .03em;
+    }
+    .fs-overlay .fs-live {
+      display: inline-flex; align-items: center; gap: .4rem;
+      font-size: .72rem; font-weight: 700;
+      color: var(--success);
+      background: rgba(16,185,129,.18);
+      border: 1px solid rgba(16,185,129,.4);
+      border-radius: 20px;
+      padding: .2rem .6rem;
+      margin-left: .65rem;
+      vertical-align: middle;
+    }
+    .fs-live-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--success);
+      animation: blink 2s infinite;
+    }
+
+    /* Show overlay & fix sizing when video-wrap is fullscreen */
+    .video-wrap:fullscreen,
+    .video-wrap:-webkit-full-screen {
+      background: #000;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    .video-wrap:fullscreen .player-video,
+    .video-wrap:-webkit-full-screen .player-video { width: 100%; height: 100%; object-fit: contain; }
+    .video-wrap:fullscreen .fs-overlay,
+    .video-wrap:-webkit-full-screen .fs-overlay { display: block; }
+    .video-wrap:fullscreen .video-placeholder,
+    .video-wrap:-webkit-full-screen .video-placeholder { display: none; }
+    /* ── Grid pause overlay ────────────────────────────────────────── */
+    .grid-pause-overlay {
+      position: absolute; inset: 0;
+      background: rgba(8,10,16,.72);
+      backdrop-filter: blur(2px);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: .45rem;
+      pointer-events: none;
+      z-index: 5;
+      transition: opacity .3s;
+    }
+    .grid-pause-overlay .gp-icon { font-size: 1.6rem; opacity: .6; }
+    .grid-pause-overlay .gp-label {
+      font-size: .72rem; font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .grid-pause-overlay .gp-key {
+      font-size: .68rem;
+      color: var(--neon);
+      background: rgba(167,139,250,.12);
+      border: 1px solid rgba(167,139,250,.3);
+      border-radius: 6px;
+      padding: .15rem .5rem;
+      font-weight: 700;
+    }
+    /* Connected pill on paused card */
+    .conn-pill {
+      position: absolute; top: .55rem; right: .55rem;
+      display: flex; align-items: center; gap: .3rem;
+      font-size: .62rem; font-weight: 700;
+      color: var(--success);
+      background: rgba(16,185,129,.12);
+      border: 1px solid rgba(16,185,129,.3);
+      border-radius: 20px;
+      padding: .18rem .55rem;
+      z-index: 6;
+    }
+    .conn-pill-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--success);
+      animation: blink 2.5s infinite;
+    }
+
+    /* ── Keyboard shortcut HUD (bottom center, grid view only) ────────── */
+    #keyHud {
+      position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+      background: rgba(15,17,24,.88);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: .55rem 1.2rem;
+      font-size: .75rem; color: var(--text-muted);
+      display: flex; align-items: center; gap: .5rem;
+      pointer-events: none;
+      z-index: 50;
+      transition: opacity .3s;
+    }
+    #keyHud kbd {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: .1rem .4rem;
+      font-family: monospace;
+      font-size: .72rem;
+      color: var(--neon);
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🎮</div>
+    <div>
+      <div class="logo-text">Tournament Stream</div>
+      <div class="logo-sub">Панель наблюдения</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="badge">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Подключение...</span>
+    </div>
+    <div class="badge">
+      Игроков: <span class="val" id="playerCount">0</span>
+    </div>
+  </div>
+</header>
+
+<!-- Keyboard shortcut HUD -->
+<div id="keyHud">🎮 Клавиши <kbd>1</kbd> – <kbd>9</kbd> / <kbd>0</kbd> = игрок · <kbd>Esc</kbd> = выход</div>
+
+<!-- Main -->
+<main>
+  <!-- Info bar: stream link for players -->
+  <div class="info-bar">
+    <div style="flex:1; min-width:0;">
+      <div class="info-label">Ссылка для игроков</div>
+      <div class="stream-url-wrap">
+        <div class="stream-url" id="streamUrl">—</div>
+        <button class="btn btn-primary" id="copyStreamBtn" onclick="copyStreamUrl()">📋 Копировать</button>
+        <div class="qr-wrap">
+          <button class="btn btn-icon" id="qrBtn" onclick="toggleQR()" title="QR-код">📱</button>
+          <div class="qr-popup" id="qrPopup">
+            <canvas id="qrCanvas"></canvas>
+            <p>Отсканируйте с телефона</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div id="emptyState" class="empty-state">
+    <div class="empty-icon">📺</div>
+    <div class="empty-title">Ожидание игроков</div>
+    <div class="empty-sub">
+      Отправьте игрокам ссылку выше. Как только они нажмут «Начать трансляцию»
+      — их экраны появятся здесь в реальном времени.
+    </div>
+  </div>
+
+  <!-- Players grid -->
+  <div id="playersGrid" class="players-grid" style="display:none;"></div>
+</main>
+
+<!-- Toast -->
+<div class="toast" id="toast">✓ Ссылка скопирована!</div>
+
+<!-- QR code lib -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- Socket.io -->
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  // ── Helpers ────────────────────────────────────────────────────────────
+  const $ = (id) => document.getElementById(id);
+  const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+  // ── Force H.264 for hardware GPU encode/decode (much lower CPU) ────────
+  // VP8/VP9 (WebRTC default) = software-only = kills CPU.
+  // H.264 = Chrome uses DXVA2/MediaFoundation on Windows = GPU-accelerated.
+  function preferH264(peer) {
+    try {
+      const caps = RTCRtpReceiver.getCapabilities('video');
+      if (!caps) return;
+      const h264 = caps.codecs.filter(c => /h264/i.test(c.mimeType));
+      const rest = caps.codecs.filter(c => !/h264/i.test(c.mimeType));
+      const sorted = [...h264, ...rest];
+      peer.getTransceivers().forEach(t => {
+        try { t.setCodecPreferences(sorted); } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
+  // ── State ──────────────────────────────────────────────────────────────
+  /** playerNumber → { socketId, peer } */
+  const players = new Map();
+  /** streamer socketId → playerNumber */
+  const sockToPlayer = new Map();
+
+  // ── Socket ────────────────────────────────────────────────────────────
+  const socket = io();
+
+  socket.on('connect', () => {
+    $('statusDot').classList.add('live');
+    $('statusText').textContent = 'Подключено';
+    socket.emit('join-host');
+  });
+
+  socket.on('disconnect', () => {
+    $('statusDot').classList.remove('live');
+    $('statusText').textContent = 'Отключено';
+  });
+
+  socket.on('players-list', (list) => {
+    list.forEach(({ playerNumber, socketId }) => registerPlayer(playerNumber, socketId));
+    refreshCount();
+  });
+
+  socket.on('player-joined', ({ playerNumber, socketId }) => {
+    registerPlayer(playerNumber, socketId);
+    refreshCount();
+  });
+
+  socket.on('player-left', ({ playerNumber }) => {
+    leavePlayer(playerNumber);
+    refreshCount();
+  });
+
+  // Offer comes from the streamer → we are the viewer
+  socket.on('offer', async ({ fromSocketId, offer }) => {
+    const playerNumber = sockToPlayer.get(fromSocketId);
+    if (playerNumber === undefined) return;
+
+    const peer = new RTCPeerConnection(rtcConfig);
+    players.get(playerNumber).peer = peer;
+
+    peer.ontrack = (ev) => {
+      const video = $(`video-${playerNumber}`);
+      const placeholder = $(`placeholder-${playerNumber}`);
+      if (video) {
+        video.srcObject = ev.streams[0];
+        video.play().catch(() => {});
+        if (placeholder) placeholder.style.display = 'none';
+      }
+    };
+
+    peer.onicecandidate = (ev) => {
+      if (ev.candidate)
+        socket.emit('ice-candidate', { targetSocketId: fromSocketId, candidate: ev.candidate });
+    };
+
+    await peer.setRemoteDescription(offer);
+    preferH264(peer);  // must be after setRemoteDescription, before createAnswer
+    const answer = await peer.createAnswer();
+    await peer.setLocalDescription(answer);
+    socket.emit('answer', { targetSocketId: fromSocketId, answer });
+  });
+
+  socket.on('ice-candidate', async ({ fromSocketId, candidate }) => {
+    const playerNumber = sockToPlayer.get(fromSocketId);
+    if (playerNumber === undefined) return;
+    const peer = players.get(playerNumber)?.peer;
+    if (peer && candidate) {
+      try { await peer.addIceCandidate(candidate); } catch (_) {}
+    }
+  });
+
+  // ── Register player ────────────────────────────────────────────────────
+  function registerPlayer(playerNumber, socketId) {
+    if (players.has(playerNumber)) return;
+    players.set(playerNumber, { socketId, peer: null });
+    sockToPlayer.set(socketId, playerNumber);
+    buildCard(playerNumber);
+    socket.emit('join-view', { playerNumber });
+  }
+
+  function leavePlayer(playerNumber) {
+    const card = $(`card-${playerNumber}`);
+    if (card) {
+      card.classList.add('leaving');
+      setTimeout(() => { card.remove(); refreshCount(); }, 1500);
+    }
+    const info = players.get(playerNumber);
+    if (info) {
+      info.peer?.close();
+      sockToPlayer.delete(info.socketId);
+    }
+    players.delete(playerNumber);
+    if (players.size === 0) {
+      $('emptyState').style.display = 'flex';
+      $('playersGrid').style.display = 'none';
+    }
+  }
+
+  function refreshCount() {
+    const count = document.querySelectorAll('.player-card').length;
+    $('playerCount').textContent = count;
+  }
+
+  // ── Build card DOM ─────────────────────────────────────────────────────
+  function buildCard(playerNumber) {
+    const obsUrl = `${location.protocol}//${location.hostname}:${location.port}/view?player=${playerNumber}`;
+
+    const card = document.createElement('div');
+    card.className = 'player-card';
+    card.id = `card-${playerNumber}`;
+    card.innerHTML = `
+      <div class="card-header">
+        <div class="player-label">
+          <span>🎮</span>
+          Игрок ${playerNumber}
+        </div>
+        <div style="display:flex;align-items:center;gap:.45rem;">
+          <div class="live-pill">
+            <div class="live-dot"></div>
+            В ЭФИРЕ
+          </div>
+          <button class="fs-btn" onclick="switchToPlayer(${playerNumber})" title="Полный экран + звук (или двойной клик на видео)">⛶</button>
+        </div>
+      </div>
+      <div class="video-wrap" id="wrap-${playerNumber}">
+        <video id="video-${playerNumber}" class="player-video" autoplay muted playsinline
+               ondblclick="switchToPlayer(${playerNumber})" style="cursor:pointer;"></video>
+        <div class="video-placeholder" id="placeholder-${playerNumber}">
+          <div class="spin">⏳</div>
+          <span>Ожидание потока...</span>
+        </div>
+        <!-- Static overlay shown in grid view (stream is paused) -->
+        <div class="grid-pause-overlay" id="gridOverlay-${playerNumber}" style="display:none;">
+          <span class="gp-icon">⏸️</span>
+          <span class="gp-label">Пауза</span>
+          <span class="gp-key">${playerNumber <= 9 ? playerNumber : 0}</span>
+        </div>
+        <div class="conn-pill" id="connPill-${playerNumber}" style="display:none;">
+          <span class="conn-pill-dot"></span>СИГНАЛ
+        </div>
+        <div class="fs-overlay">
+          🎮 Игрок ${playerNumber}
+          <span class="fs-live"><span class="fs-live-dot"></span>LIVE</span>
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="obs-url-display" style="flex:1;min-width:0;" title="${obsUrl}">${obsUrl}</div>
+      </div>
+    `;
+
+    $('playersGrid').appendChild(card);
+    $('emptyState').style.display = 'none';
+    $('playersGrid').style.display = 'grid';
+
+    // After the first frame arrives → freeze in grid view (show static pause overlay)
+    const video = document.getElementById(`video-${playerNumber}`);
+    video.addEventListener('canplay', () => {
+      // Tiny delay so at least one frame renders into the element
+      setTimeout(() => {
+        if (!document.fullscreenElement) {
+          setPlayerPaused(playerNumber, true);
+          socket.emit('pause-stream', { targetPlayerNumber: playerNumber });
+        }
+      }, 400);
+    }, { once: true });
+  }
+
+  // ── Pause / resume helpers ────────────────────────────────────────────────
+  /** Track which player is currently shown fullscreen (null = grid view) */
+  let currentFullscreenPlayer = null;
+
+  /** Show/hide the static pause overlay on a card */
+  function setPlayerPaused(playerNumber, paused) {
+    const video   = document.getElementById(`video-${playerNumber}`);
+    const overlay = document.getElementById(`gridOverlay-${playerNumber}`);
+    const pill    = document.getElementById(`connPill-${playerNumber}`);
+    if (!video) return;
+    if (paused) {
+      video.pause();
+      if (overlay) overlay.style.display = 'flex';
+      if (pill)    pill.style.display    = 'flex';
+    } else {
+      video.play().catch(() => {});
+      if (overlay) overlay.style.display = 'none';
+      if (pill)    pill.style.display    = 'none';
+    }
+  }
+
+  // ── Serialised switching ─────────────────────────────────────────────────
+  //  Only ONE switch runs at a time.  Rapid keypresses queue only the LATEST
+  //  requested player.  Resuming a player cancels any pending pause timer.
+  //  The 3500 ms pause guard checks the player is still in the background.
+  let _switchLock    = false;
+  let _pendingSwitch = null;       // latest queued player number (or null)
+  const _pauseTimers = new Map();  // playerNumber → setTimeout id
+
+  async function switchToPlayer(playerNumber) {
+    if (!players.has(playerNumber)) return;
+
+    if (_switchLock) {
+      // Already switching — remember only the latest request
+      if (playerNumber !== currentFullscreenPlayer) _pendingSwitch = playerNumber;
+      return;
+    }
+    if (currentFullscreenPlayer === playerNumber) return;
+
+    _switchLock    = true;
+    _pendingSwitch = null;
+    try {
+      await _execSwitch(playerNumber);
+    } finally {
+      _switchLock = false;
+      const next  = _pendingSwitch;
+      _pendingSwitch = null;
+      if (next !== null && next !== currentFullscreenPlayer && players.has(next)) {
+        switchToPlayer(next);   // fire-and-forget the queued switch
+      }
+    }
+  }
+
+  async function _execSwitch(playerNumber) {
+    const prevPlayer = currentFullscreenPlayer;
+    const video = document.getElementById(`video-${playerNumber}`);
+    if (!video) return;
+
+    // Cancel any in-flight pause timer for the target (it is being resumed)
+    if (_pauseTimers.has(playerNumber)) {
+      clearTimeout(_pauseTimers.get(playerNumber));
+      _pauseTimers.delete(playerNumber);
+    }
+
+    // Snapshot baseline BEFORE resuming (currentTime / totalFrames already > 0)
+    let baselineFrames = 0;
+    let baselineTime   = video.currentTime;
+    try { baselineFrames = video.getVideoPlaybackQuality().totalVideoFrames; } catch (_) {}
+
+    // Resume the target stream
+    socket.emit('resume-stream', { targetPlayerNumber: playerNumber });
+    setPlayerPaused(playerNumber, false);
+
+    // Wait for NEW decoded frames (delta from baseline), 5 s hard timeout
+    await new Promise((resolve) => {
+      const deadline = Date.now() + 5000;
+      function check() {
+        let hasNew = false;
+        try { hasNew = video.getVideoPlaybackQuality().totalVideoFrames > baselineFrames; } catch (_) {}
+        if (!hasNew) hasNew = video.currentTime > baselineTime + 0.08;
+        if (hasNew || Date.now() >= deadline) { resolve(); }
+        else requestAnimationFrame(check);
+      }
+      if (video.readyState >= 2) { check(); }
+      else {
+        video.addEventListener('canplay', check, { once: true });
+        setTimeout(check, 400);   // also poll in case readyState jumps
+      }
+    });
+
+    // +1 s stabilisation buffer before showing the switch
+    await new Promise(r => setTimeout(r, 1000));
+
+    // Enter fullscreen (update state FIRST so onFullscreenChange sees it)
+    currentFullscreenPlayer = playerNumber;
+    enterFullscreen(playerNumber);
+
+    // Schedule pause of the previous player (cancelled if the player is resumed again)
+    if (prevPlayer !== null && prevPlayer !== playerNumber) {
+      if (_pauseTimers.has(prevPlayer)) clearTimeout(_pauseTimers.get(prevPlayer));
+      const tid = setTimeout(() => {
+        _pauseTimers.delete(prevPlayer);
+        // Guard: only pause if the player is still in the background
+        if (prevPlayer !== currentFullscreenPlayer) {
+          socket.emit('pause-stream', { targetPlayerNumber: prevPlayer });
+          setPlayerPaused(prevPlayer, true);
+        }
+      }, 3500);
+      _pauseTimers.set(prevPlayer, tid);
+    }
+  }
+
+  // ── Keyboard shortcuts ──────────────────────────────────────────────────────
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    // Map key code to player number
+    let num = null;
+    const c = e.code;
+    if      (c === 'Digit0'  || c === 'Numpad0') num = 10;
+    else if (c === 'Digit1'  || c === 'Numpad1') num = 1;
+    else if (c === 'Digit2'  || c === 'Numpad2') num = 2;
+    else if (c === 'Digit3'  || c === 'Numpad3') num = 3;
+    else if (c === 'Digit4'  || c === 'Numpad4') num = 4;
+    else if (c === 'Digit5'  || c === 'Numpad5') num = 5;
+    else if (c === 'Digit6'  || c === 'Numpad6') num = 6;
+    else if (c === 'Digit7'  || c === 'Numpad7') num = 7;
+    else if (c === 'Digit8'  || c === 'Numpad8') num = 8;
+    else if (c === 'Digit9'  || c === 'Numpad9') num = 9;
+
+    if (num !== null && players.has(num)) {
+      e.preventDefault();
+      switchToPlayer(num);
+    }
+  });
+
+  // ── Fullscreen + audio ─────────────────────────────────────────────────────
+  function enterFullscreen(playerNumber) {
+    const wrap = document.getElementById(`wrap-${playerNumber}`);
+    if (!wrap) return;
+
+    const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+
+    if (fsEl === wrap) {
+      // Pressing the button on the same player that's already fullscreen → exit
+      const exit = document.exitFullscreen || document.webkitExitFullscreen;
+      if (exit) exit.call(document);
+    } else {
+      // Request fullscreen on the new wrap.
+      // If another element is already fullscreen the browser switches directly
+      // (no intermediate fullscreenchange with fsEl=null in Chrome).
+      const req = wrap.requestFullscreen || wrap.webkitRequestFullscreen;
+      if (req) req.call(wrap).catch(() => {});
+    }
+  }
+
+  // When entering fullscreen → unmute that player's video.
+  // When fsEl=null (user pressed Escape, or browser gap during element-switch) → pause.
+  //
+  // Chrome sometimes fires TWO fullscreenchange events when switching elements:
+  //   event 1: fsEl = null  (old element left)
+  //   event 2: fsEl = wrap  (new element entered)
+  // We debounce the "null" case with 200ms to survive this race.
+  let _pendingFsExit = null;
+
+  function onFullscreenChange() {
+    const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+    document.querySelectorAll('.player-video').forEach(v => { v.muted = true; v.volume = 1; });
+
+    // Cancel any pending exit-pause timer (element may re-enter fullscreen quickly)
+    if (_pendingFsExit) { clearTimeout(_pendingFsExit); _pendingFsExit = null; }
+
+    if (fsEl) {
+      // A fullscreen element is active — unmute it and hide the HUD
+      document.getElementById('keyHud').style.opacity = '0';
+      const video = fsEl.querySelector('.player-video');
+      if (video) { video.muted = false; video.volume = 1; }
+    } else {
+      // fsEl is null — might be a transient gap during element-switch.
+      // Wait 200ms: if another element enters fullscreen, the timer is cancelled above.
+      _pendingFsExit = setTimeout(() => {
+        _pendingFsExit = null;
+        // Confirm we're truly not in fullscreen before pausing
+        if (document.fullscreenElement || document.webkitFullscreenElement) return;
+        document.getElementById('keyHud').style.opacity = '1';
+        const wasPlayer = currentFullscreenPlayer;
+        currentFullscreenPlayer = null;
+        if (wasPlayer !== null) {
+          setTimeout(() => {
+            socket.emit('pause-stream', { targetPlayerNumber: wasPlayer });
+            setPlayerPaused(wasPlayer, true);
+          }, 300);
+        }
+      }, 200);
+    }
+  }
+  document.addEventListener('fullscreenchange',       onFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+
+  // ── Copy helpers ───────────────────────────────────────────────────────
+  function copyObs(playerNumber, url) {
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = $(`obsBtn-${playerNumber}`);
+      btn.textContent = '✓ Скопировано';
+      btn.classList.add('copied');
+      showToast('OBS-ссылка скопирована!');
+      setTimeout(() => { btn.textContent = '📋 OBS'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+
+  function copyStreamUrl() {
+    navigator.clipboard.writeText($('streamUrl').textContent).then(() => {
+      const btn = $('copyStreamBtn');
+      btn.textContent = '✓ Скопировано';
+      btn.classList.add('copied');
+      showToast('Ссылка для игроков скопирована!');
+      setTimeout(() => { btn.textContent = '📋 Копировать'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+
+  function showToast(msg = '✓ Скопировано!') {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // ── QR code ────────────────────────────────────────────────────────────
+  let qrGenerated = false;
+  function toggleQR() {
+    const popup = $('qrPopup');
+    popup.classList.toggle('show');
+    if (popup.classList.contains('show') && !qrGenerated) {
+      new QRCode($('qrCanvas'), {
+        text: $('streamUrl').textContent,
+        width: 160, height: 160,
+        colorDark: '#a78bfa',
+        colorLight: '#0f1118',
+        correctLevel: QRCode.CorrectLevel.M,
+      });
+      qrGenerated = true;
+    }
+  }
+  // Close QR popup on outside click
+  document.addEventListener('click', (e) => {
+    if (!$('qrBtn').contains(e.target) && !$('qrPopup').contains(e.target))
+      $('qrPopup').classList.remove('show');
+  });
+
+  // ── Set stream URL ─────────────────────────────────────────────────────
+  $('streamUrl').textContent = `${location.protocol}//${location.hostname}:${location.port}/stream`;
+</script>
+</body>
+</html>

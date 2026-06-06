@@ -1,0 +1,15 @@
+{
+  "name": "tournament-stream",
+  "version": "1.0.0",
+  "description": "Local LAN screen sharing for gaming tournament",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "selfsigned": "^2.4.1",
+    "socket.io": "^4.7.5"
+  }
+}

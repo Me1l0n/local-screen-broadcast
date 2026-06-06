@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tournament Stream — Трансляция экрана</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:         #080a10;
+      --surface:    #0f1118;
+      --surface2:   #171b27;
+      --surface3:   #1e2333;
+      --accent:     #7c3aed;
+      --accent2:    #4f46e5;
+      --neon:       #a78bfa;
+      --text:       #e2e8f0;
+      --text-muted: #64748b;
+      --text-dim:   #94a3b8;
+      --success:    #10b981;
+      --danger:     #ef4444;
+      --warn:       #f59e0b;
+      --border:     rgba(124,58,237,.18);
+    }
+
+    html, body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 70% 60% at 50% 0%, rgba(124,58,237,.14) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 100% 100%, rgba(79,70,229,.09) 0%, transparent 60%);
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── Header ────────────────────────────────────────────────────────── */
+    header {
+      position: relative; z-index: 1;
+      background: rgba(15,17,24,.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: .9rem 1.75rem;
+      display: flex; align-items: center; gap: .75rem;
+    }
+
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+      box-shadow: 0 4px 10px rgba(124,58,237,.4);
+    }
+    .logo-text {
+      font-size: 1.05rem; font-weight: 700;
+      background: linear-gradient(135deg, #a78bfa, #60a5fa);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .logo-sub { font-size: .68rem; color: var(--text-muted); }
+
+    /* ── Main ───────────────────────────────────────────────────────────── */
+    main {
+      position: relative; z-index: 1;
+      flex: 1;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 2rem 1.5rem;
+      gap: 1.5rem;
+    }
+
+    /* ── Card ───────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 520px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--neon), var(--accent2));
+    }
+
+    .card-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      display: block;
+      animation: iconFloat 4s ease-in-out infinite;
+    }
+    @keyframes iconFloat {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(-8px); }
+    }
+
+    .card-title {
+      font-size: 1.55rem; font-weight: 800;
+      margin-bottom: .4rem;
+      background: linear-gradient(135deg, var(--text), var(--neon));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .card-sub {
+      font-size: .9rem; color: var(--text-muted); line-height: 1.65;
+      margin-bottom: 1.25rem;
+    }
+
+    /* ── FPS selector ──────────────────────────────────────────────── */
+    .fps-wrap {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: .65rem 1rem;
+      margin-bottom: 1.1rem;
+      gap: .75rem;
+    }
+    .fps-wrap.hidden { display: none; }
+    .fps-label {
+      font-size: .78rem; color: var(--text-muted);
+      font-weight: 500; white-space: nowrap;
+    }
+    .fps-options {
+      display: flex; gap: .35rem;
+    }
+    .fps-btn {
+      padding: .3rem .75rem;
+      font-family: 'Outfit', sans-serif;
+      font-size: .78rem; font-weight: 700;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .fps-btn:hover { border-color: var(--neon); color: var(--neon); }
+    .fps-btn.active {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-color: transparent;
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(124,58,237,.4);
+    }
+    .fps-active-label {
+      display: none;
+      font-size: .72rem; color: var(--success);
+      font-weight: 600;
+    }
+    .fps-active-label.show { display: block; }
+
+    /* ── Bitrate selector (reuses fps-wrap / fps-btn styles) ──────────── */
+    .br-label { font-size: .78rem; color: var(--text-muted); font-weight: 500; white-space: nowrap; }
+    .br-options { display: flex; gap: .35rem; flex-wrap: wrap; }
+    /* .br-btn reuses .fps-btn — same look */
+    .br-active-label {
+      display: none;
+      font-size: .72rem; color: var(--success);
+      font-weight: 600;
+    }
+    .br-active-label.show { display: block; }
+
+    /* ── Player number badge ────────────────────────────────────────────── */
+    .player-badge {
+      display: none;
+      background: linear-gradient(135deg, rgba(124,58,237,.15), rgba(79,70,229,.15));
+      border: 1px solid rgba(167,139,250,.3);
+      border-radius: 16px;
+      padding: .85rem 1.5rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .player-badge.show { display: block; animation: fadeIn .4s ease; }
+    @keyframes fadeIn { from { opacity:0; transform: scale(.95); } to { opacity:1; transform: none; } }
+
+    .player-number-label { font-size: .75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .07em; margin-bottom: .3rem; }
+    .player-number-val {
+      font-size: 2.5rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--neon), #60a5fa);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ── Status ─────────────────────────────────────────────────────────── */
+    .status-row {
+      display: flex; align-items: center; justify-content: center; gap: .5rem;
+      font-size: .82rem; color: var(--text-muted);
+      margin-bottom: 1.5rem;
+    }
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--text-muted); transition: background .3s;
+    }
+    .status-dot.ok     { background: var(--success); animation: blink 2s infinite; }
+    .status-dot.live   { background: #ef4444; animation: blink 1.2s infinite; }
+    .status-dot.paused { background: var(--warn); animation: none; }
+    @keyframes blink {
+      0%,100% { box-shadow: none; }
+      50%      { box-shadow: 0 0 0 5px rgba(16,185,129,0); }
+    }
+
+    /* ── Pause badge (shown when admin paused this stream) ─────────────── */
+    .pause-badge {
+      display: none;
+      background: rgba(245,158,11,.15);
+      border: 1px solid rgba(245,158,11,.4);
+      border-radius: 12px;
+      padding: .55rem 1.1rem;
+      margin-bottom: 1.25rem;
+      font-size: .82rem; color: var(--warn);
+      font-weight: 600;
+      text-align: center;
+      animation: fadeIn .3s ease;
+    }
+    .pause-badge.show { display: block; }
+
+    /* ── Buttons ─────────────────────────────────────────────────────────── */
+    .btn-start {
+      width: 100%;
+      padding: 1rem;
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.05rem; font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; border: none; border-radius: 12px; cursor: pointer;
+      transition: all .25s;
+      box-shadow: 0 4px 18px rgba(124,58,237,.4);
+      display: flex; align-items: center; justify-content: center; gap: .6rem;
+    }
+    .btn-start:hover:not(:disabled) { opacity: .88; transform: translateY(-2px); box-shadow: 0 6px 22px rgba(124,58,237,.5); }
+    .btn-start:active:not(:disabled) { transform: scale(.97); }
+    .btn-start:disabled { opacity: .45; cursor: not-allowed; transform: none !important; }
+
+    .btn-stop {
+      width: 100%; margin-top: .75rem;
+      padding: .7rem;
+      font-family: 'Outfit', sans-serif;
+      font-size: .9rem; font-weight: 600;
+      background: transparent;
+      color: var(--danger); border: 1px solid rgba(239,68,68,.3);
+      border-radius: 10px; cursor: pointer;
+      transition: all .2s;
+    }
+    .btn-stop:hover { background: rgba(239,68,68,.08); border-color: var(--danger); }
+    .btn-stop { display: none; }
+    .btn-stop.show { display: block; }
+
+    /* ── Preview ─────────────────────────────────────────────────────────── */
+    .preview-wrap {
+      display: none;
+      margin-top: 1.25rem;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      aspect-ratio: 16/9;
+      background: #000;
+      position: relative;
+    }
+    .preview-wrap.show { display: block; animation: fadeIn .3s ease; }
+    .preview-video { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .preview-label {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: linear-gradient(to top, rgba(0,0,0,.8), transparent);
+      padding: .5rem .75rem;
+      font-size: .72rem; color: rgba(255,255,255,.7);
+    }
+
+    /* ── Info box ───────────────────────────────────────────────────────── */
+    .info-box {
+      background: var(--surface2);
+      border: 1px solid rgba(245,158,11,.2);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      text-align: left;
+      font-size: .8rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+    .info-box strong { color: var(--warn); }
+
+    /* ── Error ──────────────────────────────────────────────────────────── */
+    .error-msg {
+      display: none;
+      background: rgba(239,68,68,.1);
+      border: 1px solid rgba(239,68,68,.3);
+      border-radius: 10px;
+      padding: .75rem 1rem;
+      font-size: .82rem; color: var(--danger);
+      margin-top: .75rem;
+    }
+    .error-msg.show { display: block; }
+
+    /* ── Viewers count ──────────────────────────────────────────────────── */
+    .viewers-pill {
+      display: none;
+      align-items: center; gap: .35rem;
+      font-size: .72rem; font-weight: 700;
+      color: #fff;
+      background: rgba(124,58,237,.3);
+      border: 1px solid rgba(167,139,250,.3);
+      border-radius: 20px;
+      padding: .25rem .75rem;
+    }
+    .viewers-pill.show { display: flex; }
+
+    @media (max-width: 400px) {
+      .card { padding: 1.75rem 1.25rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-icon">🎮</div>
+  <div>
+    <div class="logo-text">Tournament Stream</div>
+    <div class="logo-sub">Трансляция экрана</div>
+  </div>
+</header>
+
+<main>
+  <div class="card" id="mainCard">
+    <span class="card-icon" id="mainIcon">🖥️</span>
+
+    <!-- Player number badge (shown after join) -->
+    <div class="player-badge" id="playerBadge">
+      <div class="player-number-label">Ваш номер</div>
+      <div class="player-number-val" id="playerNumberVal">—</div>
+    </div>
+
+    <!-- Pause badge (shown when admin paused this player) -->
+    <div class="pause-badge" id="pauseBadge">
+      ⏸ Трансляция на паузе — организатор переключился на другого игрока
+    </div>
+
+    <div class="card-title" id="cardTitle">Начать трансляцию</div>
+    <div class="card-sub" id="cardSub">
+      Нажмите кнопку ниже, выберите экран или окно — и ваш стрим появится у организатора турнира.
+    </div>
+
+    <!-- Status row -->
+    <div class="status-row">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Подключение к серверу...</span>
+      <span class="viewers-pill" id="viewersPill">👁 <span id="viewersCount">0</span></span>
+    </div>
+
+    <!-- FPS selector -->
+    <div class="fps-wrap" id="fpsWrap">
+      <div class="fps-label">⚡ FPS</div>
+      <div class="fps-options">
+        <button class="fps-btn" id="fps15" onclick="selectFps(15)">15</button>
+        <button class="fps-btn active" id="fps30" onclick="selectFps(30)">30</button>
+        <button class="fps-btn" id="fps60" onclick="selectFps(60)">60</button>
+      </div>
+      <div class="fps-active-label" id="fpsActiveLabel"></div>
+    </div>
+
+    <!-- Bitrate selector -->
+    <div class="fps-wrap" id="brWrap">
+      <div class="br-label">📶 Битрейт</div>
+      <div class="br-options">
+        <button class="fps-btn" id="br0" onclick="selectBr(0)">Авто</button>
+        <button class="fps-btn active" id="br10" onclick="selectBr(10)">10 Мбит</button>
+        <button class="fps-btn" id="br25" onclick="selectBr(25)">25 Мбит</button>
+        <button class="fps-btn" id="br50" onclick="selectBr(50)">50 Мбит</button>
+      </div>
+      <div class="br-active-label" id="brActiveLabel"></div>
+    </div>
+
+    <!-- Start button -->
+    <button class="btn-start" id="btnStart" onclick="startStream()" disabled>
+      <span>▶</span> Выбрать экран и начать
+    </button>
+
+    <!-- Stop button -->
+    <button class="btn-stop" id="btnStop" onclick="stopStream()">
+      ⬛ Остановить трансляцию
+    </button>
+
+    <!-- Preview -->
+    <div class="preview-wrap" id="previewWrap">
+      <video class="preview-video" id="previewVideo" autoplay muted playsinline></video>
+      <div class="preview-label">Предпросмотр — то, что видит организатор</div>
+    </div>
+
+    <!-- Error -->
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+
+  <!-- Info box -->
+  <div class="info-box" style="max-width:520px;width:100%;">
+    <strong>⚠️ Первый вход:</strong> браузер покажет предупреждение о сертификате.
+    Нажмите <strong>«Дополнительно»</strong> → <strong>«Перейти на сайт»</strong>. Это безопасно — сервер находится в вашей сети.<br><br>
+    <strong>💻 Нагрузка на CPU:</strong> убедитесь что в Chrome включено аппаратное ускорение:
+    «☰ Μеню» → Настройки → Система → <strong>Использовать аппаратное ускорение</strong> — вкл.
+    Также проверьте <code>chrome://gpu</code> — там должно быть <em>аппаратное кодирование видео: включено</em>.
+  </div>
+</main>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+  let mediaStream     = null;
+  let playerNumber    = null;
+  let viewerCount     = 0;
+  let selectedFps     = 30;
+  /** Max video bitrate in Mbps; 0 = let WebRTC decide automatically */
+  let selectedBitMbps = 10;  // 10 Mbps is plenty for 1080p30; 25+ kills VP8 CPU
+
+  // ── Anti-throttle: prevent Chrome from dropping FPS when tab is minimized ───
+  // Chrome does NOT throttle tabs with an active AudioContext.
+  // We create a silent (gain = 0) oscillator that runs during the stream.
+  let _atCtx = null;
+  function startAntiThrottle() {
+    try {
+      _atCtx = new AudioContext();
+      const osc  = _atCtx.createOscillator();
+      const gain = _atCtx.createGain();
+      gain.gain.value = 0;   // completely silent
+      osc.connect(gain);
+      gain.connect(_atCtx.destination);
+      osc.start();
+    } catch (_) {}
+  }
+  function stopAntiThrottle() {
+    try { _atCtx?.close(); } catch (_) {}
+    _atCtx = null;
+  }
+
+
+  // ── FPS selector ────────────────────────────────────────────────────────
+  function selectFps(fps) {
+    selectedFps = fps;
+    [15, 30, 60].forEach((f) => {
+      $(`fps${f}`).classList.toggle('active', f === fps);
+    });
+  }
+
+  // ── Bitrate selector ─────────────────────────────────────────────────
+  function selectBr(mbps) {
+    selectedBitMbps = mbps;
+    [0, 10, 25, 50].forEach((m) => {
+      $(`br${m}`).classList.toggle('active', m === mbps);
+    });
+  }
+
+  /**
+   * Apply selectedBitMbps to the video sender of a peer connection.
+   * Must be called after connection is established (state === 'connected').
+   */
+  async function applyBitrate(peer) {
+    const sender = peer.getSenders().find((s) => s.track?.kind === 'video');
+    if (!sender) return;
+    try {
+      const params = sender.getParameters();
+      if (!params.encodings || params.encodings.length === 0) {
+        params.encodings = [{}];
+      }
+      if (selectedBitMbps > 0) {
+        params.encodings[0].maxBitrate = selectedBitMbps * 1_000_000; // bps
+      } else {
+        delete params.encodings[0].maxBitrate; // let WebRTC adapt freely
+      }
+      await sender.setParameters(params);
+      console.log(`Bitrate set: ${selectedBitMbps > 0 ? selectedBitMbps + ' Mbps' : 'auto'}`);
+    } catch (e) {
+      console.warn('setParameters failed:', e);
+    }
+  }
+
+  /**
+   * Force H.264 codec preference on the encoder (streamer) side.
+   * Chrome on Windows uses MediaFoundation H.264 hardware encoder.
+   * Must be called AFTER addTrack() and BEFORE createOffer().
+   */
+  function preferH264(peer) {
+    try {
+      const caps = RTCRtpSender.getCapabilities('video');
+      if (!caps) return;
+      const h264 = caps.codecs.filter(c => /h264/i.test(c.mimeType));
+      const rest = caps.codecs.filter(c => !/h264/i.test(c.mimeType));
+      const sorted = [...h264, ...rest];
+      peer.getTransceivers().forEach(t => {
+        try { t.setCodecPreferences(sorted); } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
+  /** viewerSocketId → RTCPeerConnection */
+  const peers = new Map();
+
+  // ── Socket ──────────────────────────────────────────────────────────────
+  const socket = io();
+
+  socket.on('connect', () => {
+    setStatus('ok', 'Подключено к серверу');
+    $('btnStart').disabled = false;
+  });
+  socket.on('disconnect', () => {
+    setStatus('', 'Нет соединения с сервером');
+    $('btnStart').disabled = true;
+  });
+
+  socket.on('player-number', (num) => {
+    playerNumber = num;
+    $('playerBadge').classList.add('show');
+    $('playerNumberVal').textContent = num;
+    $('cardTitle').textContent = 'Трансляция активна';
+    $('cardSub').textContent = `Вы в эфире как Игрок ${num}. Организатор видит ваш экран.`;
+    $('mainIcon').textContent = '🔴';
+    setStatus('live', 'В эфире');
+  });
+
+  // ── Pause / Resume from admin ────────────────────────────────────────────
+  // Admin paused us → disable tracks (near-zero CPU/bandwidth on our side)
+  socket.on('pause-stream', () => {
+    if (!mediaStream) return;
+    mediaStream.getTracks().forEach(t => { t.enabled = false; });
+    $('pauseBadge').classList.add('show');
+    $('mainIcon').textContent = '⏸';
+    setStatus('paused', 'На паузе (организатор)');
+  });
+
+  // Admin resumed us → re-enable tracks, signal back that we are live
+  socket.on('resume-stream', () => {
+    if (!mediaStream) return;
+    mediaStream.getTracks().forEach(t => { t.enabled = true; });
+    $('pauseBadge').classList.remove('show');
+    $('mainIcon').textContent = '🔴';
+    setStatus('live', 'В эфире');
+  });
+
+  // Viewer wants our stream → create RTCPeerConnection and send offer
+  socket.on('viewer-request', async ({ viewerSocketId }) => {
+    if (!mediaStream) return;
+    if (peers.has(viewerSocketId)) return; // already connected
+
+    const peer = new RTCPeerConnection(rtcConfig);
+    peers.set(viewerSocketId, peer);
+
+    mediaStream.getTracks().forEach((track) => peer.addTrack(track, mediaStream));
+
+    preferH264(peer); // must be after addTrack, before createOffer → enables HW H.264 encoder
+
+    peer.onicecandidate = (ev) => {
+      if (ev.candidate)
+        socket.emit('ice-candidate', { targetSocketId: viewerSocketId, candidate: ev.candidate });
+    };
+
+    peer.onconnectionstatechange = () => {
+      if (peer.connectionState === 'connected') {
+        viewerCount++;
+        refreshViewers();
+        // Apply bitrate limit immediately after connection is ready
+        applyBitrate(peer);
+      } else if (['disconnected','failed','closed'].includes(peer.connectionState)) {
+        if (peers.has(viewerSocketId)) {
+          viewerCount = Math.max(0, viewerCount - 1);
+          refreshViewers();
+          peers.delete(viewerSocketId);
+        }
+      }
+    };
+
+    const offer = await peer.createOffer();
+    await peer.setLocalDescription(offer);
+    socket.emit('offer', { targetSocketId: viewerSocketId, offer });
+  });
+
+  // Viewer sent answer
+  socket.on('answer', async ({ fromSocketId, answer }) => {
+    const peer = peers.get(fromSocketId);
+    if (peer) await peer.setRemoteDescription(answer);
+  });
+
+  // ICE from viewer
+  socket.on('ice-candidate', async ({ fromSocketId, candidate }) => {
+    const peer = peers.get(fromSocketId);
+    if (peer && candidate) {
+      try { await peer.addIceCandidate(candidate); } catch (_) {}
+    }
+  });
+
+  // ── Start stream ────────────────────────────────────────────────────────
+  async function startStream() {
+    hideError();
+    $('btnStart').disabled = true;
+
+    try {
+      // Try screen share first; fall back to camera on mobile if needed
+      if (navigator.mediaDevices.getDisplayMedia) {
+        mediaStream = await navigator.mediaDevices.getDisplayMedia({
+          video: {
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            frameRate: { ideal: selectedFps, max: selectedFps },
+          },
+          audio: true,
+        });
+      } else {
+        // Mobile fallback: camera
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            frameRate: { ideal: selectedFps, max: selectedFps },
+          },
+          audio: true,
+        });
+      }
+    } catch (err) {
+      showError(err.name === 'NotAllowedError'
+        ? 'Вы отклонили запрос. Разрешите доступ к экрану и попробуйте снова.'
+        : `Ошибка: ${err.message}`);
+      $('btnStart').disabled = false;
+      return;
+    }
+
+    // Start anti-throttle AudioContext (keeps Chrome from reducing FPS when minimized)
+    startAntiThrottle();
+
+    // Show actual FPS being captured
+    const track = mediaStream.getVideoTracks()[0];
+    const actualFps = track.getSettings().frameRate;
+    const fpsLabel = $('fpsActiveLabel');
+    fpsLabel.textContent = `${actualFps ? Math.round(actualFps) : selectedFps} FPS`;
+    fpsLabel.classList.add('show');
+    $('fpsWrap').classList.add('hidden');
+
+    // Show selected bitrate
+    const brLabel = $('brActiveLabel');
+    brLabel.textContent = selectedBitMbps > 0 ? `${selectedBitMbps} Мбит/с` : 'Авто';
+    brLabel.classList.add('show');
+    $('brWrap').classList.add('hidden');
+
+    // Preview
+    $('previewVideo').srcObject = mediaStream;
+    $('previewWrap').classList.add('show');
+
+    // Stop sharing if user closes the browser's native share dialog
+    mediaStream.getVideoTracks()[0].onended = () => stopStream();
+
+    $('btnStart').style.display = 'none';
+    $('btnStop').classList.add('show');
+
+    // Register as streamer on server
+    socket.emit('join-stream');
+  }
+
+  // ── Stop stream ─────────────────────────────────────────────────────────
+  function stopStream() {
+    if (mediaStream) {
+      mediaStream.getTracks().forEach((t) => t.stop());
+      mediaStream = null;
+    }
+    peers.forEach((peer) => peer.close());
+    peers.clear();
+    viewerCount = 0;
+
+    // Stop anti-throttle AudioContext
+    stopAntiThrottle();
+
+    $('previewWrap').classList.remove('show');
+    $('previewVideo').srcObject = null;
+    $('btnStop').classList.remove('show');
+    $('btnStart').style.display = '';
+    $('btnStart').disabled = false;
+
+    // Restore FPS + bitrate selectors
+    $('fpsWrap').classList.remove('hidden');
+    $('fpsActiveLabel').classList.remove('show');
+    $('brWrap').classList.remove('hidden');
+    $('brActiveLabel').classList.remove('show');
+
+    $('playerBadge').classList.remove('show');
+    $('pauseBadge').classList.remove('show');
+    $('cardTitle').textContent = 'Начать трансляцию';
+    $('cardSub').textContent = 'Нажмите кнопку ниже, выберите экран или окно — и ваш стрим появится у организатора турнира.';
+    $('mainIcon').textContent = '🖥️';
+    setStatus('ok', 'Подключено к серверу');
+    $('viewersPill').classList.remove('show');
+
+    // Reconnect so next join-stream gets a fresh (lowest-free) slot
+    socket.disconnect().connect();
+  }
+
+  // ── UI helpers ──────────────────────────────────────────────────────────
+  function setStatus(type, text) {
+    const dot = $('statusDot');
+    dot.className = 'status-dot' + (type ? ` ${type}` : '');
+    $('statusText').textContent = text;
+  }
+
+  function showError(msg) {
+    const el = $('errorMsg');
+    el.textContent = msg;
+    el.classList.add('show');
+  }
+  function hideError() { $('errorMsg').classList.remove('show'); }
+
+  function refreshViewers() {
+    $('viewersPill').classList.toggle('show', viewerCount > 0);
+    $('viewersCount').textContent = viewerCount;
+  }
+</script>
+</body>
+</html>
